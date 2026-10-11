@@ -1,7 +1,7 @@
 name: Release Wio Firmware
 
-# Builds only the Wio Tracker L1 Pro target. Tags look like kallisti-v1.17.1-r1:
-# upstream MeshCore base version + our revision, so they never collide with upstream tags.
+# Builds only the Wio Tracker L1 Pro target. Tags look like kallisti-v0.1.0: KALLISTI's own
+# version, prefixed so they never collide with upstream MeshCore tags.
 
 permissions:
   contents: write
@@ -26,8 +26,9 @@ jobs:
       - name: Setup Build Environment
         uses: ./.github/actions/setup-build-environment
 
-      # The shared setup action keeps only the text after the last dash ("r1"),
-      # so derive the full version here: kallisti-v1.17.1-r1 -> v1.17.1-r1.
+      # The shared setup action keeps only the text after the last dash, so derive
+      # the version here: kallisti-v0.1.0 -> v0.1.0. The splash shows the part before
+      # the first dash, so versions should not contain dashes.
       - name: Resolve Version
         run: |
           if [[ "${GITHUB_REF}" == refs/tags/kallisti-* ]]; then
@@ -35,6 +36,7 @@ jobs:
           else
             echo "FIRMWARE_VERSION=dev" >> "$GITHUB_ENV"
           fi
+          echo "UPSTREAM_BASE=$(tr -d '[:space:]' < UPSTREAM_BASE)" >> "$GITHUB_ENV"
 
       - name: Build Firmware
         run: /usr/bin/env bash build.sh build-firmware "$PIO_ENV"
@@ -54,7 +56,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v3
         with:
-          name: "KALLISTI ${{ env.FIRMWARE_VERSION }} (Wio Tracker L1 Pro)"
+          name: "KALLISTI ${{ env.FIRMWARE_VERSION }} (MeshCore ${{ env.UPSTREAM_BASE }})"
           body_path: .github/release-notes.md
           draft: true
           files: out/*

@@ -2,17 +2,18 @@
 
 ## Tag scheme
 
-Release tags are `kallisti-<upstream version>-r<revision>`, for example `kallisti-v1.17.1-r1`.
+Release tags are `kallisti-v<major>.<minor>.<patch>`, for example `kallisti-v0.1.0`.
 
-- The upstream part is the MeshCore companion release this build is based on (see `UPSTREAM_BASE`).
-- The revision counts our releases on that base. It restarts at `r1` after rebasing onto a new upstream release.
+- The version is KALLISTI's own and is what the splash screen shows. Do not use dashes in it, because the splash cuts the version at the first dash.
+- The MeshCore release it is based on is recorded in `UPSTREAM_BASE` and appears in the release title.
+- Bump the patch for fixes, the minor for new features or a new MeshCore base.
 - Never push upstream-style tags (`companion-*`, `repeater-*`, `room-server-*`) to this repo.
 
 ## Cutting a release
 
 ```sh
-git tag kallisti-v1.17.1-r1
-git push origin kallisti-v1.17.1-r1
+git tag kallisti-v0.1.0
+git push origin kallisti-v0.1.0
 ```
 
 The `Release Wio Firmware` workflow builds only `WioTrackerL1_companion_radio_ble`, writes `SHA256SUMS.txt`, and creates a **draft** GitHub Release using `.github/release-notes.md`.
@@ -31,4 +32,4 @@ echo companion-v1.18.0 > UPSTREAM_BASE
 # resolve conflicts, build, run tests, test on hardware
 ```
 
-When it works, update `main` to the rebased branch, commit the new `UPSTREAM_BASE`, and tag `kallisti-v1.18.0-r1`.
+When it works, update `main` to the rebased branch, commit the new `UPSTREAM_BASE`, and tag a new minor version, for example `kallisti-v0.2.0`.

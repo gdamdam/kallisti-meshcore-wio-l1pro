@@ -51,7 +51,7 @@ Full reference: [UI and controls](docs/wio-ui.md) · [Inbox, replies and storage
 Requires [PlatformIO](https://docs.platformio.org).
 
 ```sh
-FIRMWARE_VERSION=v1.17.1-dev bash build.sh build-firmware WioTrackerL1_companion_radio_ble
+FIRMWARE_VERSION=v0.1.0 bash build.sh build-firmware WioTrackerL1_companion_radio_ble
 ```
 
 The UF2 is written to `out/`. Only this target is maintained. Other boards in `variants/` are upstream MeshCore, untouched.
