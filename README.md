@@ -1,4 +1,4 @@
-# KALLISTI
+<h1 align="center">🍏 KALLISTI</h1>
 
 MeshCore companion firmware for the **Seeed Wio Tracker L1 Pro** that works without a phone.
 Read, reply and share your position from the device itself, using the joystick and OLED.
