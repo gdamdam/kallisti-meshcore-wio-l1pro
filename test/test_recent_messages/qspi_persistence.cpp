@@ -24,7 +24,7 @@ static int writeFlash(const lfs_config* c,lfs_block_t b,lfs_off_t o,const void* 
   auto* f=static_cast<Flash*>(c->context);
   if(uintptr_t(p)%4){f->rejected++;return LFS_ERR_IO;}
   const auto* src=static_cast<const uint8_t*>(p);
-  for(size_t i=0;i<n;i++)f->bytes[b*c->block_size+o+i]&=src[i];return 0;
+  for(size_t i=0;i<n;i++){f->bytes[b*c->block_size+o+i]&=src[i];}return 0;
 }
 static int eraseFlash(const lfs_config* c,lfs_block_t b){auto* f=static_cast<Flash*>(c->context);memset(f->bytes.data()+b*c->block_size,255,c->block_size);return 0;}
 static int syncFlash(const lfs_config*){return 0;}

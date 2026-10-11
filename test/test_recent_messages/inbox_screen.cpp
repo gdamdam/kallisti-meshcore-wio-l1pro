@@ -172,14 +172,14 @@ int main() {
   {
     UITask task; Display display; FakeInboxStorage storage; InboxScreen inbox(&task,&storage); HomeNav home(&task);
     task.home=&home;task.curr=&home;task.msg_preview=&inbox;task._display=&display;home._page=HomeNav::ACTIONS;
-    for(int i=0;i<3;i++)home.handleInput(KEY_DOWN);home.handleInput(KEY_ENTER);home.handleInput(KEY_DOWN);
+    for(int i=0;i<3;i++){home.handleInput(KEY_DOWN);}home.handleInput(KEY_ENTER);home.handleInput(KEY_DOWN);
     UIMessageMetadata channel(UIMessageMetadata::Channel,1700000000,0,nullptr);inbox.add("Public","auto channel",channel);
     now_millis+=6000;task.autoEntry();assert(task.curr==&home && !home.canAutoRead());
     home.leave();display.clear();home._actions.render(display);assert(display.text().find("Clear msgs/out/draft?")==std::string::npos);
     home._page=HomeNav::FIRST;task.checkDisplayOn(KEY_DOWN);task.autoEntry();assert(task.curr==&home);
     now_millis+=5001;task.autoEntry(KEY_DOWN);assert(task.curr==&home);task.autoEntry();assert(task.curr==&inbox);
     // Clock remains in ACTIONS, updates once per second and exits predictably.
-    ActionsMenu actions(&task);for(int i=0;i<7;i++)actions.handleInput(KEY_DOWN);actions.handleInput(KEY_ENTER);
+    ActionsMenu actions(&task);for(int i=0;i<7;i++){actions.handleInput(KEY_DOWN);}actions.handleInput(KEY_ENTER);
     display.clear();assert(actions.render(display)==1000);assert(display.text().find("CLOCK (UTC)")!=std::string::npos);
     assert(display.text().find("2026-")!=std::string::npos);actions.handleInput(KEY_CANCEL);
     display.clear();actions.render(display);assert(display.text().find("Show clock")!=std::string::npos);
@@ -188,7 +188,7 @@ int main() {
     UITask task;Display display;FakeInboxStorage favorites,drafts;UIComposeState compose(&favorites,&drafts);task.compose=&compose;
     UISendTarget target;strcpy(target.name,"Saved recipient");target.key[0]=1;compose.save(target,"draft",0,1);
     QuickSendScreen send(&task);send.open(false);send.handleInput(KEY_DOWN);send.handleInput(KEY_DOWN);send.handleInput(KEY_ENTER);
-    send.handleInput(KEY_CANCEL);for(int i=0;i<4;i++)send.handleInput(KEY_DOWN);send.handleInput(KEY_ENTER);
+    send.handleInput(KEY_CANCEL);for(int i=0;i<4;i++){send.handleInput(KEY_DOWN);}send.handleInput(KEY_ENTER);
     display.clear();send.render(display);assert(display.text().find("> Contacts")!=std::string::npos);
     send.handleInput(KEY_ENTER);display.clear();send.render(display);assert(display.text().find("Contact 0")!=std::string::npos);
     // Channel join failure retains the name in the editor for correction/retry.
@@ -256,7 +256,7 @@ int main() {
     assert(disk.load(saved) && saved.count()==64);
     for(size_t i=0;i<saved.count();i++) assert(saved.at(i)->kind==0);
     // At capacity Keep cannot silently evict a DM.
-    inbox.open();inbox.handleInput(KEY_RIGHT);for(int i=0;i<5;i++)inbox.handleInput(KEY_DOWN);inbox.handleInput(KEY_ENTER);
+    inbox.open();inbox.handleInput(KEY_RIGHT);for(int i=0;i<5;i++){inbox.handleInput(KEY_DOWN);}inbox.handleInput(KEY_ENTER);
     assert(task.alert=="Saved full: delete");
     // Auto-view progresses through all pages before discarding the temporary item.
     task.auto_channels=false;assert(!inbox.startAutoView());task.auto_channels=true;
@@ -267,7 +267,7 @@ int main() {
     assert(inbox.clearStorage());
     // A kept channel persists; reading an unkept one removes it on leaving.
     inbox.add("Field","important",channel);inbox.open();inbox.handleInput(KEY_RIGHT);
-    for(int i=0;i<5;i++)inbox.handleInput(KEY_DOWN);inbox.handleInput(KEY_ENTER);
+    for(int i=0;i<5;i++){inbox.handleInput(KEY_DOWN);}inbox.handleInput(KEY_ENTER);
     assert(task.alert=="Message kept");
     inbox.add("Public","discard after read",channel);inbox.open();inbox.handleInput(KEY_ENTER);inbox.handleInput(KEY_LEFT);
     inbox.flush();InboxScreen restarted(&task,&storage);restarted.open();
@@ -282,8 +282,8 @@ int main() {
     UIMessageMetadata from(UIMessageMetadata::Contact,1700000000,255,nullptr,original);
     UIMessageMetadata later(UIMessageMetadata::Contact,1700000001,255,nullptr,replacement);
     inbox.add("Original","reply to me",from);inbox.open();inbox.handleInput(KEY_RIGHT);
-    for(int i=0;i<3;i++)inbox.handleInput(KEY_DOWN);inbox.handleInput(KEY_ENTER);
-    for(int i=0;i<9;i++)inbox.handleInput(KEY_DOWN);inbox.handleInput(KEY_ENTER);
+    for(int i=0;i<3;i++){inbox.handleInput(KEY_DOWN);}inbox.handleInput(KEY_ENTER);
+    for(int i=0;i<9;i++){inbox.handleInput(KEY_DOWN);}inbox.handleInput(KEY_ENTER);
     inbox.handleInput(KEY_DOWN);
     for(int i=0;i<70;i++)inbox.add("Other","new",later); // original inbox entry is gone
     assert(render(inbox,display).find("Custom text")!=std::string::npos);
