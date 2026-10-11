@@ -22,6 +22,10 @@ jobs:
       - name: Run Unit Tests
         run: pio test -e native -e native_kiss_modem -vv
 
+      # Standalone host tests for the Wio UI; PlatformIO's runner skips this folder.
+      - name: Run Wio UI Host Tests
+        run: python3 test/test_recent_messages/run_tests.py
+
       - name: Upload Test Results
         # Upload test results even if the test step failed.
         if: always()
