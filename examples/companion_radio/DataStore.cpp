@@ -345,6 +345,43 @@ void DataStore::loadChannels(DataStoreHost* host) {
     }
 }
 
+#if defined(UI_RECENT_INBOX)
+// UI changes use a verified temporary file and LittleFS atomic rename. Never
+// remove the existing channels file to make room for an unverified replacement.
+bool DataStore::saveUIChannels(DataStoreHost* host) {
+  auto* fs = _getContactsChannelsFS();
+  const char* temporary = "/ui_channels_tmp";
+  if (fs->exists(temporary) && !fs->remove(temporary)) return false;
+  File file = fs->open(temporary, FILE_O_WRITE);
+  if (!file) return false;
+  ChannelDetails channel;
+  uint8_t record[68] = {};
+  unsigned count = 0;
+  bool ok = true;
+  while (host->getChannelForSave(count, channel)) {
+    memcpy(record + 4, channel.name, 32);
+    memcpy(record + 36, channel.channel.secret, 32);
+    if (file.write(record, sizeof(record)) != sizeof(record)) { ok = false; break; }
+    ++count;
+  }
+  file.close();
+  if (ok) {
+    file = fs->open(temporary, FILE_O_READ);
+    ok = bool(file);
+    for (unsigned i = 0; ok && i < count; ++i) {
+      ok = host->getChannelForSave(i, channel) && file.read(record, sizeof(record)) == sizeof(record) &&
+           !memcmp(record + 4, channel.name, 32) && !memcmp(record + 36, channel.channel.secret, 32);
+    }
+    uint8_t extra;
+    ok = ok && file.read(&extra, 1) == 0;
+    file.close();
+  }
+  if (ok) ok = fs->rename(temporary, "/channels2");
+  if (!ok) fs->remove(temporary);
+  return ok;
+}
+#endif
+
 void DataStore::saveChannels(DataStoreHost* host) {
   File file = openWrite(_getContactsChannelsFS(), "/channels2");
   if (file) {

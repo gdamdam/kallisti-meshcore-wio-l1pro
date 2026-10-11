@@ -1,0 +1,52 @@
+name: Check Upstream MeshCore Release
+
+# Opens an issue when MeshCore publishes a companion release newer than the
+# base recorded in UPSTREAM_BASE, so the fork can be rebased onto it.
+
+permissions:
+  issues: write
+  contents: read
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # Mondays 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Clone Repo
+        uses: actions/checkout@v6
+
+      - name: Compare Upstream Tags
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BASE=$(tr -d '[:space:]' < UPSTREAM_BASE)
+          # stable releases only: companion-vX.Y.Z, no suffixes
+          LATEST=$(git ls-remote --tags --refs https://github.com/meshcore-dev/MeshCore.git 'companion-v*' \
+            | sed 's#.*refs/tags/##' | grep -E '^companion-v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
+          echo "base=$BASE latest=$LATEST"
+
+          if [ -z "$LATEST" ] || [ "$LATEST" = "$BASE" ]; then
+            echo "Up to date."
+            exit 0
+          fi
+          # ignore if the base is already newer (e.g. upstream deleted a tag)
+          if [ "$(printf '%s\n%s\n' "$BASE" "$LATEST" | sort -V | tail -1)" = "$BASE" ]; then
+            exit 0
+          fi
+
+          TITLE="Upstream MeshCore $LATEST available (base: $BASE)"
+          if gh issue list --state open --search "in:title \"$TITLE\"" --json title -q '.[].title' | grep -qxF "$TITLE"; then
+            echo "Issue already open."
+            exit 0
+          fi
+
+          gh issue create --title "$TITLE" --body "MeshCore released \`$LATEST\`. This fork is based on \`$BASE\`.
+
+          Changes: https://github.com/meshcore-dev/MeshCore/compare/$BASE...$LATEST
+
+          Rebase steps are in RELEASE.md."

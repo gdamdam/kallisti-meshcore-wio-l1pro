@@ -24,6 +24,10 @@ EnvironmentSensorManager sensors = EnvironmentSensorManager();
   MomentaryButton user_btn(PIN_USER_BTN, 1000, true, false, false);
   MomentaryButton joystick_left(JOYSTICK_LEFT, 1000, true, false, false);
   MomentaryButton joystick_right(JOYSTICK_RIGHT, 1000, true, false, false);
+#if defined(UI_RECENT_INBOX)
+  MomentaryButton joystick_up(JOYSTICK_UP, 0, true, false, false);
+  MomentaryButton joystick_down(JOYSTICK_DOWN, 0, true, false, false);
+#endif
   MomentaryButton back_btn(PIN_BACK_BTN, 1000, true, false, true);
 #endif
 

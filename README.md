@@ -1,128 +1,85 @@
-## About MeshCore
+# KALLISTI: MeshCore firmware for the Wio Tracker L1 Pro
 
-MeshCore is a lightweight, portable C++ library that enables multi-hop packet routing for embedded projects using LoRa and other packet radios. It is designed for developers who want to create resilient, decentralized communication networks that work without the internet.
+> **Forked from [meshcore-dev/MeshCore](https://github.com/meshcore-dev/MeshCore).** This is an unofficial fork, not supported by the MeshCore project. Current base: MeshCore `companion-v1.17.1`.
 
-## 🔍 What is MeshCore?
+Custom companion firmware for the **Seeed Wio Tracker L1 Pro** (nRF52840 + SX1262, SH1106 OLED, joystick, GPS). It is a fork of MeshCore `companion-v1.17.1` that adds a standalone on-device messaging UI, so the tracker is usable without a phone while staying fully compatible with MeshCore phone apps and networks.
 
-MeshCore now supports a range of LoRa devices, allowing for easy flashing without the need to compile firmware manually. Users can flash a pre-built binary using tools like Adafruit ESPTool and interact with the network through a serial console.
-MeshCore provides the ability to create wireless mesh networks, similar to Meshtastic and Reticulum but with a focus on lightweight multi-hop packet routing for embedded projects. Unlike Meshtastic, which is tailored for casual LoRa communication, or Reticulum, which offers advanced networking, MeshCore balances simplicity with scalability, making it ideal for custom embedded solutions, where devices (nodes) can communicate over long distances by relaying messages through intermediate nodes. This is especially useful in off-grid, emergency, or tactical situations where traditional communication infrastructure is unavailable.
+MeshCore's radio, routing, encryption, packet processing and phone queues are unchanged. All additions are in the companion UI and its local storage.
 
-## ⚡ Key Features
+<p align="center">
+  <img src="docs/img/kallisti-splash.jpg" alt="Wio Tracker L1 Pro showing the KALLISTI startup screen" width="360">
+</p>
 
-* Multi-Hop Packet Routing
-  * Devices can forward messages across multiple nodes, extending range beyond a single radio's reach.
-  * Supports up to a configurable number of hops to balance network efficiency and prevent excessive traffic.
-  * Nodes use fixed roles where "Companion" nodes are not repeating messages at all to prevent adverse routing paths from being used.
-* Supports LoRa Radios – Works with Heltec, RAK Wireless, and other LoRa-based hardware.
-* Decentralized & Resilient – No central server or internet required; the network is self-healing.
-* Low Power Consumption – Ideal for battery-powered or solar-powered devices.
-* Simple to Deploy – Pre-built example applications make it easy to get started.
+## Features
 
-## 🎯 What Can You Use MeshCore For?
+- **Persistent inbox**: 64 saved messages plus 8 temporary channel messages, stored on QSPI flash with CRC-checked dual snapshots that survive restart and torn writes. Unread markers, next-unread navigation, delete/clear with default-No confirmation.
+- **Temporary channels with auto-read**: channel traffic stays in RAM unless you choose *Keep message*; optional auto-read pages through unread channel messages when idle.
+- **Replies and Quick send**: preset texts (OK, NO, YES, THANKS, RECEIVED, NEED HELP, …), custom text via a joystick editor, persistent drafts, and favorites-first contact/channel pickers. Every send shows the exact destination and text before a default-No confirmation.
+- **Position sharing**: send saved coordinates or a fresh GPS fix (≤ 30 s old); stale or invalid fixes are refused, never silently substituted.
+- **Outbox**: latest 16 UI-initiated sends with ACK status and manual retry.
+- **GPS page**: OFF / ACQUIRING / FIX / STALE, satellites, coordinates, altitude, fix age.
+- **Actions page**: Bluetooth toggle, send advert, hibernate, clean storage, join/remove channels (Public or `#name`), buzzer, auto-read, UTC clock.
+- **KALLISTI splash** with version and build ID.
 
-* Off-Grid Communication: Stay connected even in remote areas.
-* Emergency Response & Disaster Recovery: Set up instant networks where infrastructure is down.
-* Outdoor Activities: Hiking, camping, and adventure racing communication.
-* Tactical & Security Applications: Military, law enforcement, and private security use cases.
-* IoT & Sensor Networks: Collect data from remote sensors and relay it back to a central location.
+Details: [docs/wio-ui.md](./docs/wio-ui.md) (current UI, controls, storage) and [docs/wio-inbox.md](./docs/wio-inbox.md) (inbox, replies, snapshot format).
 
-## 🚀 How to Get Started
+## Supported target
 
-- Watch the [MeshCore QuickStart Playlist](https://www.youtube.com/watch?v=iaFltojJrAc&list=PLshzThxhw4O4WU_iZo3NmNZOv6KMrUuF9) by The Comms Channel
-- Watch the [MeshCore Technical Presentation](https://www.youtube.com/watch?v=OwmkVkZQTf4) by Liam Cottle.
-- Read through our [Frequently Asked Questions](./docs/faq.md) and [Documentation](https://docs.meshcore.io).
-- Flash the MeshCore firmware on a supported device.
-- Connect with a supported client.
+Only one build environment carries these features and is tested:
 
-For developers:
+| Environment | Hardware | Notes |
+|---|---|---|
+| `WioTrackerL1_companion_radio_ble` | Wio Tracker L1 Pro (OLED) | Enabled via `UI_RECENT_INBOX` |
 
-- Install [PlatformIO](https://docs.platformio.org) in [Visual Studio Code](https://code.visualstudio.com).
-- Clone and open the MeshCore repository in Visual Studio Code.
-- See the example applications you can modify and run:
-  - [Companion Radio](./examples/companion_radio) - For use with an external chat app, over BLE, USB or Wi-Fi.
-  - [KISS Modem](./examples/kiss_modem) - Serial KISS protocol bridge for host applications. ([protocol docs](./docs/kiss_modem_protocol.md))
-  - [Simple Repeater](./examples/simple_repeater) - Extends network coverage by relaying messages.
-  - [Simple Room Server](./examples/simple_room_server) - A simple BBS server for shared Posts.
-  - [Simple Secure Chat](./examples/simple_secure_chat) - Secure terminal based text communication between devices.
-  - [Simple Sensor](./examples/simple_sensor) - Remote sensor node with telemetry and alerting.
+Other environments inherited from MeshCore still exist in `variants/` but are unmodified upstream builds and are not maintained here.
 
-The Simple Secure Chat example can be interacted with through the Serial Monitor in Visual Studio Code, or with a Serial USB Terminal on Android.
+## Build
 
-## ⚡️ MeshCore Flasher
+Requires [PlatformIO](https://docs.platformio.org).
 
-We have prebuilt firmware ready to flash on supported devices.
-
-- Launch https://meshcore.io/flasher
-- Select a supported device
-- Flash one of the firmware types:
-  - Companion, Repeater or Room Server
-- Once flashing is complete, you can connect with one of the MeshCore clients below.
-
-## 📱 MeshCore Clients
-
-**Companion Firmware**
-
-The companion firmware can be connected to via BLE, USB or Wi-Fi depending on the firmware type you flashed.
-
-- Web: https://app.meshcore.nz
-- Android: https://play.google.com/store/apps/details?id=com.liamcottle.meshcore.android
-- iOS: https://apps.apple.com/us/app/meshcore/id6742354151?platform=iphone
-- NodeJS: https://github.com/liamcottle/meshcore.js
-- Python: https://github.com/fdlamotte/meshcore-cli
-
-**Repeater and Room Server Firmware**
-
-The repeater and room server firmware can be set up via USB in the web config tool.
-
-- https://config.meshcore.io
-
-They can also be managed via LoRa in the mobile app by using the Remote Management feature.
-
-## 🛠 Hardware Compatibility
-
-MeshCore is designed for devices listed in the [MeshCore Flasher](https://meshcore.io/flasher)
-
-## 📜 License
-
-MeshCore is open-source software released under the MIT License. You are free to use, modify, and distribute it for personal and commercial projects.
-
-## Contributing
-
-Please submit PR's using 'dev' as the base branch!
-For minor changes just submit your PR and we'll try to review it, but for anything more 'impactful' please open an Issue first and start a discussion. It is better to sound out what it is you want to achieve first, and try to come to a consensus on what the best approach is, especially when it impacts the structure or architecture of this codebase.
-
-Here are some general principles you should try to adhere to:
-* Keep it simple. Please, don't think like a high-level lang programmer. Think embedded, and keep code concise, without any unnecessary layers.
-* No dynamic memory allocation, except during setup/begin functions.
-* Use the same brace and indenting style that's in the core source modules. (A .clang-format is probably going to be added soon, but please do NOT retroactively re-format existing code. This just creates unnecessary diffs that make finding problems harder)
-
-Help us prioritize! Please react with thumbs-up to issues/PRs you care about most. We look at reaction counts when planning work.
-
-### Running unit tests
-
-To run unit tests, run the following command:
-
-```bash
-pio test --environment native --verbose
+```sh
+FIRMWARE_VERSION=v1.17.1-kallisti \
+bash build.sh build-firmware WioTrackerL1_companion_radio_ble
 ```
 
-## Road-Map / To-Do
+This produces `.pio/build/WioTrackerL1_companion_radio_ble/firmware.uf2` and a version-named copy under `out/` (`out/` is replaced on each run).
 
-There are a number of fairly major features in the pipeline, with no particular time-frames attached yet. In very rough chronological order:
-- [X] Companion radio: UI redesign
-- [X] Repeater + Room Server: add ACL's (like Sensor Node has)
-- [X] Standardise Bridge mode for repeaters
-- [ ] Repeater/Bridge: Standardise the Transport Codes for zoning/filtering
-- [X] Core + Repeater: enhanced zero-hop neighbour discovery
-- [ ] Core: round-trip manual path support
-- [ ] Companion + Apps: support for multiple sub-meshes (and 'off-grid' client repeat mode)
-- [ ] Core + Apps: support for LZW message compression
-- [ ] Core: dynamic CR (Coding Rate) for weak vs strong hops
-- [ ] Core: new framework for hosting multiple virtual nodes on one physical device
-- [ ] V2 protocol spec: discussion and consensus around V2 packet protocol, including path hashes, new encryption specs, etc
+## Flash
 
-## 📞 Get Support
+Prebuilt UF2 files with SHA-256 checksums are on the [Releases page](https://github.com/gdamdam/kallisti-meshcore-wio-l1pro/releases). Release tags follow `kallisti-<MeshCore version>-r<revision>`; see [RELEASE.md](./RELEASE.md).
 
-- Report bugs and request features on the [GitHub Issues](https://github.com/ripplebiz/MeshCore/issues) page.
-- Find additional guides and components on [my site](https://buymeacoffee.com/ripplebiz).
-- Join [MeshCore Discord](https://meshcore.gg) to chat with the developers and get help from the community.
+1. Back up identity, channels, contacts and settings with your MeshCore companion app first.
+2. Connect over a USB data cable and double-press Reset; a UF2 drive appears.
+3. Copy `firmware.uf2` to the drive and wait for the reboot.
+
+To go back, flash the official Wio BLE UF2 from the MeshCore v1.17.1 release the same way. Inbox snapshots use a format older firmware cannot read; identity and settings are stored separately and are unaffected.
+
+## Use
+
+Connect with any MeshCore companion client over BLE (default PIN `123456`), or use the device on its own:
+
+- **Left/Right**: switch pages (Messages, Recent adverts, Radio, Quick send, Outbox, GPS, Actions).
+- **Center**: open / select / confirm. **Up/Down**: scroll. **Right** in a message: actions menu.
+- **Menu**: back. Double-click Menu toggles the buzzer.
+
+Full control reference: [docs/wio-ui.md](./docs/wio-ui.md).
+
+## Tests
+
+Host tests (C++11, ASan/UBSan) exercise the real UI, storage and routing code with fake hardware adapters:
+
+```sh
+python3 test/test_recent_messages/run_tests.py
+python3 test/test_recent_messages/run_gps_tests.py
+python3 test/test_recent_messages/run_qspi_tests.py /path/to/framework-arduinoadafruitnrf52
+```
+
+Host tests do not replace on-device verification (radio delivery, GPS cases, sleep/restart storage, heap headroom).
+
+## Based on MeshCore
+
+This project is built on [MeshCore](https://github.com/meshcore-dev/MeshCore), a lightweight C++ library for multi-hop LoRa mesh networking by Scott Powell / rippleradios.com and contributors. For MeshCore itself, other devices, clients and the protocol, see the [MeshCore documentation](https://docs.meshcore.io) and the upstream repository. Please report issues with this fork here, not upstream.
+
+## License
+
+MIT, as upstream MeshCore. See [license.txt](./license.txt).

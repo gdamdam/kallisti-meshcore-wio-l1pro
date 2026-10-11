@@ -165,6 +165,13 @@ protected:
   }
 
 public:
+#if defined(UI_RECENT_INBOX)
+  bool inboxReplyTarget(uint8_t kind, uint8_t channel_idx, const uint8_t* target, char* name, size_t size);
+  bool sendInboxReply(uint8_t kind, uint8_t channel_idx, const uint8_t* target, const char* text, uint32_t* ack = nullptr, uint32_t* timeout = nullptr);
+  bool getUISendTarget(bool channels, unsigned index, UISendTarget& target);
+  const char* joinUIChannel(const char* name);
+  bool removeUIChannel(const UISendTarget& target);
+#endif
   void savePrefs() {
     _prefs.node_lat = sensors.node_lat;
     _prefs.node_lon = sensors.node_lon;

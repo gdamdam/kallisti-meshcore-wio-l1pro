@@ -15,6 +15,10 @@ public:
     virtual long getAltitude() = 0;
     virtual long satellitesCount() = 0;
     virtual bool isValid() = 0;
+    // Optional receiver metadata. Unknown age is never a fresh live position.
+    virtual bool hasFix() { return isValid(); }
+    virtual uint32_t getFixAgeMillis() { return UINT32_MAX; }
+    virtual bool hasAltitude() { return false; }
     virtual long getTimestamp() = 0;
     virtual void sendSentence(const char * sentence);
     virtual void reset() = 0;

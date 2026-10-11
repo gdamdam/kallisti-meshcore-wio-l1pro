@@ -422,6 +422,11 @@ ContactInfo*  MyMesh::processAck(const uint8_t *data) {
       _serial->writeFrame(out_frame, 9);
 
       // NOTE: the same ACK can be received multiple times!
+#if defined(UI_RECENT_INBOX)
+      if (_ui && expected_ack_table[i].contact) {
+        _ui->onUIMessageAck(expected_ack_table[i].ack, expected_ack_table[i].contact->id.pub_key);
+      }
+#endif
       expected_ack_table[i].ack = 0; // clear expected hash, now that we have received ACK
       return expected_ack_table[i].contact;
     }
@@ -468,7 +473,12 @@ void MyMesh::queueMessage(const ContactInfo &from, uint8_t txt_type, mesh::Packe
   // we only want to show text messages on display, not cli data
   bool should_display = txt_type == TXT_TYPE_PLAIN || txt_type == TXT_TYPE_SIGNED_PLAIN;
   if (should_display && _ui) {
-    _ui->newMsg(path_len, from.name, text, offline_queue_len);
+    UIMessageMetadata metadata = {
+      txt_type == TXT_TYPE_SIGNED_PLAIN ? UIMessageMetadata::Signed : UIMessageMetadata::Contact,
+      sender_timestamp, 0xFF, extra_len == 4 ? extra : nullptr,
+      txt_type == TXT_TYPE_PLAIN ? from.id.pub_key : nullptr
+    };
+    _ui->newMsgWithMetadata(path_len, from.name, text, offline_queue_len, metadata);
     if (!_serial->isConnected()) {
       _ui->notify(UIEventType::contactMessage);
     }
@@ -585,7 +595,18 @@ void MyMesh::onChannelMessageRecv(const mesh::GroupChannel &channel, mesh::Packe
   if (getChannel(channel_idx, channel_details)) {
     channel_name = channel_details.name;
   }
-  if (_ui) _ui->newMsg(path_len, channel_name, text, offline_queue_len);
+  if (_ui) {
+    const uint8_t* reply_target = nullptr;
+#if defined(UI_RECENT_INBOX)
+    uint8_t fingerprint[32];
+    if (getChannel(channel_idx, channel_details) && channel_details.name[0]) {
+      mesh::Utils::sha256(fingerprint, sizeof(fingerprint), channel_details.channel.secret, sizeof(channel_details.channel.secret));
+      reply_target = fingerprint;
+    }
+#endif
+    UIMessageMetadata metadata = { UIMessageMetadata::Channel, timestamp, channel_idx, nullptr, reply_target };
+    _ui->newMsgWithMetadata(path_len, channel_name, text, offline_queue_len, metadata);
+  }
 #endif
 }
 
@@ -2265,3 +2286,115 @@ bool MyMesh::advert() {
 bool MyMesh::hasPendingWork() const {
   return _mgr->getOutboundTotal() > 0 || dirty_contacts_expiry != 0;
 }
+
+#if defined(UI_RECENT_INBOX)
+// UI replies use full identities, never sender names or short relay prefixes.
+bool MyMesh::inboxReplyTarget(uint8_t kind, uint8_t channel_idx, const uint8_t* target, char* name, size_t size) {
+  if (!target || !name || !size) return false;
+  if (kind == UIMessageMetadata::Contact) {
+    auto* contact = lookupContactByPubKey(target, PUB_KEY_SIZE);
+    if (!contact) return false;
+    snprintf(name, size, "DM: %s", contact->name);
+    return true;
+  }
+  if (kind == UIMessageMetadata::Channel) {
+    ChannelDetails channel;
+    if (!getChannel(channel_idx, channel) || !channel.name[0]) return false;
+    uint8_t fingerprint[32];
+    mesh::Utils::sha256(fingerprint, sizeof(fingerprint), channel.channel.secret, sizeof(channel.channel.secret));
+    if (memcmp(fingerprint, target, sizeof(fingerprint))) return false;
+    snprintf(name, size, "#%u: %s", unsigned(channel_idx), channel.name);
+    return true;
+  }
+  return false;
+}
+
+bool MyMesh::sendInboxReply(uint8_t kind, uint8_t channel_idx, const uint8_t* target, const char* text, uint32_t* ack, uint32_t* ack_timeout) {
+  if (ack) *ack = 0;
+  if (ack_timeout) *ack_timeout = 0;
+  char name[40];
+  if (!text || !text[0] || strlen(text) > MAX_TEXT_LEN || !inboxReplyTarget(kind, channel_idx, target, name, sizeof(name))) return false;
+  uint32_t timestamp = getRTCClock()->getCurrentTimeUnique();
+  if (kind == UIMessageMetadata::Channel) {
+    ChannelDetails channel;
+    return getChannel(channel_idx, channel) && sendGroupMessage(timestamp, channel.channel, _prefs.node_name, text, strlen(text));
+  }
+  auto* recipient = lookupContactByPubKey(target, PUB_KEY_SIZE);
+  if (!recipient) return false;
+  uint32_t expected_ack = 0, timeout = 0;
+  int result = sendMessage(*recipient, timestamp, 0, text, expected_ack, timeout);
+  if (result == MSG_SEND_FAILED) return false;
+  if (ack) *ack = expected_ack;
+  if (ack_timeout) *ack_timeout = timeout;
+  if (expected_ack) {
+    expected_ack_table[next_ack_idx].msg_sent = _ms->getMillis();
+    expected_ack_table[next_ack_idx].ack = expected_ack;
+    expected_ack_table[next_ack_idx].contact = recipient;
+    next_ack_idx = (next_ack_idx + 1) % EXPECTED_ACK_TABLE_SIZE;
+  }
+  return true; // queued by the existing transport; not a delivery receipt
+}
+
+bool MyMesh::getUISendTarget(bool channels, unsigned index, UISendTarget& target) {
+  if (channels) {
+    for (unsigned i = 0; i < MAX_GROUP_CHANNELS; i++) {
+      ChannelDetails channel;
+      if (!getChannel(i, channel) || !channel.name[0]) continue;
+      if (index--) continue;
+      target.kind = UIMessageMetadata::Channel; target.channel_idx = i; target.favorite = false;
+      memcpy(target.name, channel.name, sizeof(target.name)); target.name[31] = 0;
+      mesh::Utils::sha256(target.key, sizeof(target.key), channel.channel.secret, sizeof(channel.channel.secret));
+      return true;
+    }
+  } else {
+    ContactInfo contact;
+    if (index < unsigned(getNumContacts()) && getContactByIdx(index + MAX_ANON_CONTACTS, contact)) {
+      target.kind = UIMessageMetadata::Contact; target.channel_idx = 0xFF; target.favorite = (contact.flags & 1) != 0;
+      memcpy(target.key, contact.id.pub_key, sizeof(target.key));
+      memcpy(target.name, contact.name, sizeof(target.name)); target.name[31] = 0;
+      return true;
+    }
+  }
+  return false;
+}
+
+const char* MyMesh::joinUIChannel(const char* name) {
+  size_t n = strlen(name);
+  if (!n || n > 31 || (strcmp(name, "Public") && (name[0] != '#' || n < 2))) return "Invalid channel name";
+  ChannelDetails channel = {};
+  strcpy(channel.name, name);
+  if (!strcmp(name, "Public")) {
+    // Standard MeshCore Public key (PUBLIC_GROUP_PSK), decoded to 16 bytes.
+    static const uint8_t public_key[16] = {139,51,135,233,197,205,234,106,201,229,237,186,161,21,205,114};
+    memcpy(channel.channel.secret, public_key, 16);
+  } else {
+    for (size_t i = 1; i < n; ++i) {
+      char c = name[i];
+      if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-')) return "Use a-z 0-9 or -";
+    }
+    uint8_t digest[32]; mesh::Utils::sha256(digest, sizeof(digest), (const uint8_t*)name, n);
+    memcpy(channel.channel.secret, digest, 16);
+  }
+  int empty = -1;
+  for (unsigned i = 0; i < MAX_GROUP_CHANNELS; ++i) {
+    ChannelDetails existing;
+    if (!getChannel(i, existing)) continue;
+    if (!existing.name[0] && empty < 0) empty = i;
+    if (!strcmp(existing.name, name)) return !memcmp(existing.channel.secret, channel.channel.secret, sizeof(channel.channel.secret)) ? nullptr : "Name already in use";
+  }
+  if (empty < 0) return "Channel slots full";
+  ChannelDetails previous; getChannel(empty, previous);
+  if (!setChannel(empty, channel)) return "Channel update failed";
+  if (!_store->saveUIChannels(this)) { setChannel(empty, previous); return "Storage full/error"; }
+  return nullptr;
+}
+bool MyMesh::removeUIChannel(const UISendTarget& target) {
+  char name[40];
+  if (target.kind != UIMessageMetadata::Channel || !inboxReplyTarget(target.kind, target.channel_idx, target.key, name, sizeof(name))) return false;
+  ChannelDetails empty = {}, previous;
+  if (!getChannel(target.channel_idx, previous) || !setChannel(target.channel_idx, empty)) return false;
+  if (!_store->saveUIChannels(this)) { setChannel(target.channel_idx, previous); return false; }
+  return true;
+}
+
+#endif
