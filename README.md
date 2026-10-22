@@ -65,6 +65,10 @@ python3 test/test_recent_messages/run_gps_tests.py   # needs one build first, fo
 
 Release process and upstream tracking: [RELEASE.md](RELEASE.md).
 
+## How it's built
+
+KALLISTI is a free, non-commercial project, built out of love for radio. It was developed with AI coding tools; every change was designed, reviewed and tested by a human, on real hardware (Wio Tracker L1 Pro).
+
 ## Credits and license
 
 Built on [MeshCore](https://github.com/meshcore-dev/MeshCore) by Scott Powell / rippleradios.com and contributors. Report issues with this firmware here, not upstream.
